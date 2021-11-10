@@ -54,7 +54,7 @@ CUDA_VISIBLE_DEVICES=0 python3 pytorch/inference.py audio_tagging \
     --cuda
 ```
 
-pandas, numba==0.48 pip install로 다운받아야 함.
+pandas, numba==0.48, h5py pip install로 다운받아야 함.
 cuda kernel image error 났을 때는 자신의 GPU에 맞는 pytorch를 재설치해줘야하는데, Geforce 3090 같은 경우는 python 버전도 3.8이상이어야 하고, 자신의 cudatoolkit 버전에 맞게 pip install torch==1.7.1+cu110 torchvision==0.8.2+cu110 -f https://download.pytorch.org/whl/torch_stable.html로 다운 받아야합니다.
 
 ## Sound event detection using pretrained models

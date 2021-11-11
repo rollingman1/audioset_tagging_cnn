@@ -59,9 +59,12 @@ def audio_tagging(args):
     with torch.no_grad():
         model.eval()
         batch_output_dict = model(waveform, None)
+        print('batch_output_dict\n', batch_output_dict)
 
     clipwise_output = batch_output_dict['clipwise_output'].data.cpu().numpy()[0]
     """(classes_num,)"""
+
+    print('clipwise_output:\n', clipwise_output)
 
     sorted_indexes = np.argsort(clipwise_output)[::-1]
 
@@ -97,6 +100,7 @@ def sound_event_detection(args):
     classes_num = config.classes_num
     labels = config.labels
     frames_per_second = sample_rate // hop_size
+    print('frames_per_second', frames_per_second)
 
     # Paths
     fig_path = os.path.join('results', '{}.png'.format(get_filename(audio_path)))
@@ -131,6 +135,7 @@ def sound_event_detection(args):
 
     framewise_output = batch_output_dict['framewise_output'].data.cpu().numpy()[0]
     """(time_steps, classes_num)"""
+    print('framewise_output:', framewise_output[0].argmax())
 
     print('Sound event detection result (time_steps x classes_num): {}'.format(
         framewise_output.shape))
@@ -138,7 +143,9 @@ def sound_event_detection(args):
     sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
 
     top_k = 10  # Show top results
-    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]    
+    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]
+    print('top result mat', top_result_mat)
+    print(np.array(labels)[sorted_indexes[0: top_k]])
     """(time_steps, top_k)"""
 
     # Plot result    
@@ -167,6 +174,9 @@ def sound_event_detection(args):
 
 
 if __name__ == '__main__':
+    import time
+
+    start = time.time()
 
     parser = argparse.ArgumentParser(description='Example of parser. ')
     subparsers = parser.add_subparsers(dest='mode')
@@ -205,3 +215,5 @@ if __name__ == '__main__':
 
     else:
         raise Exception('Error argument!')
+
+    print("time :", time.time() - start)

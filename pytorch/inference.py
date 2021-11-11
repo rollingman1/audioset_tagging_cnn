@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.insert(1, os.path.join(sys.path[0], '../utils'))
 import numpy as np
 import argparse
@@ -28,16 +29,16 @@ def audio_tagging(args):
     checkpoint_path = args.checkpoint_path
     audio_path = args.audio_path
     device = torch.device('cuda') if args.cuda and torch.cuda.is_available() else torch.device('cpu')
-    
+
     classes_num = config.classes_num
     labels = config.labels
 
     # Model
     Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size, 
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
-        classes_num=classes_num)
-    
+    model = Model(sample_rate=sample_rate, window_size=window_size,
+                  hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
+                  classes_num=classes_num)
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
@@ -48,11 +49,11 @@ def audio_tagging(args):
         model = torch.nn.DataParallel(model)
     else:
         print('Using CPU.')
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
-    waveform = waveform[None, :]    # (1, audio_length)
+    waveform = waveform[None, :]  # (1, audio_length)
     waveform = move_data_to_device(waveform, device)
 
     # Forward
@@ -70,8 +71,8 @@ def audio_tagging(args):
 
     # Print audio tagging top probabilities
     for k in range(10):
-        print('{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]], 
-            clipwise_output[sorted_indexes[k]]))
+        print('{}: {:.3f}'.format(np.array(labels)[sorted_indexes[k]],
+                                  clipwise_output[sorted_indexes[k]]))
 
     # Print embedding
     if 'embedding' in batch_output_dict.keys():
@@ -108,10 +109,10 @@ def sound_event_detection(args):
 
     # Model
     Model = eval(model_type)
-    model = Model(sample_rate=sample_rate, window_size=window_size, 
-        hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax, 
-        classes_num=classes_num)
-    
+    model = Model(sample_rate=sample_rate, window_size=window_size,
+                  hop_size=hop_size, mel_bins=mel_bins, fmin=fmin, fmax=fmax,
+                  classes_num=classes_num)
+
     checkpoint = torch.load(checkpoint_path, map_location=device)
     model.load_state_dict(checkpoint['model'])
 
@@ -121,11 +122,11 @@ def sound_event_detection(args):
 
     if 'cuda' in str(device):
         model.to(device)
-    
+
     # Load audio
     (waveform, _) = librosa.core.load(audio_path, sr=sample_rate, mono=True)
 
-    waveform = waveform[None, :]    # (1, audio_length)
+    waveform = waveform[None, :]  # (1, audio_length)
     waveform = move_data_to_device(waveform, device)
 
     # Forward
@@ -143,14 +144,21 @@ def sound_event_detection(args):
     sorted_indexes = np.argsort(np.max(framewise_output, axis=0))[::-1]
 
     top_k = 10  # Show top results
-    top_result_mat = framewise_output[:, sorted_indexes[0 : top_k]]
+    top_result_mat = framewise_output[:, sorted_indexes[0: top_k]]
     print('top result mat', top_result_mat)
+    print('frame number', len(top_result_mat))
+    for idx, frame in enumerate(top_result_mat):
+        if idx % (frames_per_second//2) == 0:
+            if frame[frame.argmax()] > 0.03:
+                print('frame_label', idx/frames_per_second, np.array(labels)[sorted_indexes[0: top_k]][frame.argmax()])
+            else:
+                print('frame_label', 'None')
     print(np.array(labels)[sorted_indexes[0: top_k]])
     """(time_steps, top_k)"""
 
     # Plot result    
-    stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=window_size, 
-        hop_length=hop_size, window='hann', center=True)
+    stft = librosa.core.stft(y=waveform[0].data.cpu().numpy(), n_fft=window_size,
+                             hop_length=hop_size, window='hann', center=True)
     frames_num = stft.shape[-1]
 
     fig, axs = plt.subplots(2, 1, sharex=True, figsize=(10, 4))
@@ -161,7 +169,7 @@ def sound_event_detection(args):
     axs[1].xaxis.set_ticks(np.arange(0, frames_num, frames_per_second))
     axs[1].xaxis.set_ticklabels(np.arange(0, frames_num / frames_per_second))
     axs[1].yaxis.set_ticks(np.arange(0, top_k))
-    axs[1].yaxis.set_ticklabels(np.array(labels)[sorted_indexes[0 : top_k]])
+    axs[1].yaxis.set_ticklabels(np.array(labels)[sorted_indexes[0: top_k]])
     axs[1].yaxis.grid(color='k', linestyle='solid', linewidth=0.3, alpha=0.3)
     axs[1].set_xlabel('Seconds')
     axs[1].xaxis.set_ticks_position('bottom')
@@ -187,7 +195,7 @@ if __name__ == '__main__':
     parser_at.add_argument('--hop_size', type=int, default=320)
     parser_at.add_argument('--mel_bins', type=int, default=64)
     parser_at.add_argument('--fmin', type=int, default=50)
-    parser_at.add_argument('--fmax', type=int, default=14000) 
+    parser_at.add_argument('--fmax', type=int, default=14000)
     parser_at.add_argument('--model_type', type=str, required=True)
     parser_at.add_argument('--checkpoint_path', type=str, required=True)
     parser_at.add_argument('--audio_path', type=str, required=True)
@@ -199,12 +207,12 @@ if __name__ == '__main__':
     parser_sed.add_argument('--hop_size', type=int, default=320)
     parser_sed.add_argument('--mel_bins', type=int, default=64)
     parser_sed.add_argument('--fmin', type=int, default=50)
-    parser_sed.add_argument('--fmax', type=int, default=14000) 
+    parser_sed.add_argument('--fmax', type=int, default=14000)
     parser_sed.add_argument('--model_type', type=str, required=True)
     parser_sed.add_argument('--checkpoint_path', type=str, required=True)
     parser_sed.add_argument('--audio_path', type=str, required=True)
     parser_sed.add_argument('--cuda', action='store_true', default=False)
-    
+
     args = parser.parse_args()
 
     if args.mode == 'audio_tagging':
